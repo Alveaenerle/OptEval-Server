@@ -8,6 +8,10 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(ZMQ REQUIRED libzmq IMPORTED_TARGET)
 
 include(FetchContent)
+
+set(BUILD_TESTING OFF CACHE INTERNAL "Disable testing completely")
+set(CPPZMQ_BUILD_TESTS OFF CACHE INTERNAL "Disable cppzmq tests")
+
 FetchContent_Declare(
     cppzmq
     GIT_REPOSITORY https://github.com/zeromq/cppzmq.git
