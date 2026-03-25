@@ -3,30 +3,29 @@
 #include <string>
 #include <vector>
 #include <zmq.hpp>
+#include "plugin.hpp"
 
-typedef int (*GetDimensionsFunc)();
-typedef bool (*CheckConstraintsFunc)(const double*);
-typedef double (*EvaluateFunc)(const double*);
+
 
 class BenchmarkServer {
 public:
-    BenchmarkServer(int port, const std::string& plugin_path);
-    ~BenchmarkServer();
+    BenchmarkServer(int port, const std::string& pluginPath) :
+        port_(port), 
+        plugin(pluginPath), 
+        zmq_context_(1), 
+        zmq_socket_(zmq_context_, zmq::socket_type::rep)
+    {
+        std::string address = "tcp://*:" + std::to_string(port_);
+        zmq_socket_.bind(address);
+        std::cout << "[Server] Listening on " << address << std::endl;
+    }
+    ~BenchmarkServer() {};
     void run();
 
 private:
     int port_;
-    std::string plugin_path_;
-    
+    Plugin plugin;    
     zmq::context_t zmq_context_;
     zmq::socket_t zmq_socket_;
-
-    void* plugin_handle_;
-
-    GetDimensionsFunc get_dimensions_;
-    CheckConstraintsFunc check_constraints_;
-    EvaluateFunc evaluate_;
-
-    void load_plugin();
     void process_request();
 };
