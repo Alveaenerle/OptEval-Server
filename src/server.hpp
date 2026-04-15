@@ -1,31 +1,36 @@
 #pragma once
 
 #include <string>
-#include <vector>
 #include <zmq.hpp>
+#include <iostream>
+#include <cstring>
+#include <cmath>
 #include "plugin.hpp"
 
 
 
 class BenchmarkServer {
 public:
-    BenchmarkServer(int port, const std::string& pluginPath) :
-        port_(port), 
-        plugin(pluginPath), 
+    BenchmarkServer(const std::string& pluginId) :
+        plugin(pluginId), 
         zmq_context_(1), 
         zmq_socket_(zmq_context_, zmq::socket_type::rep)
     {
-        std::string address = "tcp://*:" + std::to_string(port_);
-        zmq_socket_.bind(address);
-        std::cout << "[Server] Listening on " << address << std::endl;
+        zmq_socket_.bind("tcp://*:0");
+        std::string last_endpoint = zmq_socket_.get(zmq::sockopt::last_endpoint);
+        size_t colon_pos = last_endpoint.find_last_of(':');
+        port_ = std::stoi(last_endpoint.substr(colon_pos + 1));
+        std::cout << "[Server] Listening on " << last_endpoint << std::endl;
     }
-    ~BenchmarkServer() {};
+    ~BenchmarkServer() = default;
+    int get_port() const { return port_; }
     void run();
 
 private:
     int port_;
-    Plugin plugin;    
+    plugin::Plugin plugin;    
     zmq::context_t zmq_context_;
     zmq::socket_t zmq_socket_;
-    void process_request();
+    int i = 0;
+    bool process_request();
 };

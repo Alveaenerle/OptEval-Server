@@ -21,7 +21,9 @@ FetchContent_MakeAvailable(cppzmq)
 
 add_executable(opt_eval_server
     src/main.cpp
-    src/server.cpp    
+    src/server.cpp
+    src/server_manager.cpp
+    src/plugin_utils.cpp
 )
 
 target_link_libraries(opt_eval_server PRIVATE cppzmq PkgConfig::ZMQ)
