@@ -38,5 +38,5 @@ private:
         }
     }
 
-    void handleRequest(const std::string& problemId);
+    void handleRequest(const std::string& problemId, const std::string& evalID);
 };

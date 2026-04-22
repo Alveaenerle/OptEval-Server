@@ -24,6 +24,7 @@ add_executable(opt_eval_server
     src/server.cpp
     src/server_manager.cpp
     src/plugin_utils.cpp
+    src/SessionLogger.cpp
 )
 
 target_link_libraries(opt_eval_server PRIVATE cppzmq PkgConfig::ZMQ)

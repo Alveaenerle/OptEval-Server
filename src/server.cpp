@@ -1,5 +1,5 @@
 #include "server.hpp"
-
+#include "SessionLogger.hpp"
 
 void BenchmarkServer::run() {
     std::cout << "[Server] Waiting for data..." << std::endl;
@@ -57,6 +57,10 @@ bool BenchmarkServer::process_request() {
     
     reply_data[0] = status;
     std::memcpy(&reply_data[1], &result, sizeof(double));
+
+    if (!evalID.empty()) {
+        global_logger.log_evaluation(evalID, pluginId_, result);
+    }
 
     zmq::message_t reply(reply_data.begin(), reply_data.end());
     zmq_socket_.send(reply, zmq::send_flags::none);
