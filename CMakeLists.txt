@@ -24,7 +24,15 @@ add_executable(opt_eval_server
     src/server.cpp
     src/server_manager.cpp
     src/plugin_utils.cpp
+    src/plugin_registry.cpp
+    src/plot_handler.cpp
     src/SessionLogger.cpp
 )
 
-target_link_libraries(opt_eval_server PRIVATE cppzmq PkgConfig::ZMQ)
+target_link_libraries(opt_eval_server PRIVATE cppzmq PkgConfig::ZMQ ${CMAKE_DL_LIBS})
+
+add_custom_command(TARGET opt_eval_server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${CMAKE_SOURCE_DIR}/plugins
+        $<TARGET_FILE_DIR:opt_eval_server>/plugins
+    VERBATIM)

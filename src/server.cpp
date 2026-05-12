@@ -1,65 +1,54 @@
 #include "server.hpp"
+
+#include <cstring>
+#include <iostream>
+#include <vector>
+
 #include "SessionLogger.hpp"
+#include "evaluator.hpp"
+
+namespace {
+constexpr int kReceiveTimeoutMs = 20000;
+}
+
+BenchmarkServer::BenchmarkServer(const std::string& pluginId, const std::string& evalId)
+    : pluginId_(pluginId),
+      evalId_(evalId),
+      plugin_(pluginId),
+      zmq_context_(1),
+      zmq_socket_(zmq_context_, zmq::socket_type::rep) {
+    zmq_socket_.bind("tcp://*:0");
+    const std::string endpoint = zmq_socket_.get(zmq::sockopt::last_endpoint);
+    port_ = std::stoi(endpoint.substr(endpoint.find_last_of(':') + 1));
+    std::cout << "[Server] Listening on " << endpoint << std::endl;
+}
 
 void BenchmarkServer::run() {
     std::cout << "[Server] Waiting for data..." << std::endl;
-    // Set 20 seconds (20000ms) timeout
-    zmq_socket_.set(zmq::sockopt::rcvtimeo, 20000);
-    while (true) {
-        if (!process_request()) {
-            std::cout << "[Server] Timeout reached. Freeing slot on port " << port_ << std::endl;
-            break;
-        }
+    zmq_socket_.set(zmq::sockopt::rcvtimeo, kReceiveTimeoutMs);
+    while (process_request()) {
     }
+    std::cout << "[Server] Timeout reached. Freeing slot on port " << port_ << std::endl;
 }
 
-
-// TODO - Move result evaluation to different class, this function should only handle network requests
 bool BenchmarkServer::process_request() {
     zmq::message_t request;
-    
-    auto recv_res = zmq_socket_.recv(request, zmq::recv_flags::none);
+    const auto recv_res = zmq_socket_.recv(request, zmq::recv_flags::none);
     if (!recv_res) {
-        // Timeout
         return false;
     }
-    
-    std::cout << i++ << "fsd\n";
-    const double* vector_data = static_cast<const double*>(request.data());
-    size_t num_elements = request.size() / sizeof(double);
 
-    /*
-        0 - NAN_VALUE_RETURNED
-        1 - BUDGET_EXHAUSTED
-        2 - TARGET_REACHED
-        3 - EVALUATION_DENIED
-        4 - OUT_OF_BOUND_VIOLATION
-        5 - DIMENSION_MISMATCH
-        6 - PLUGIN_RUNTIME_ERROR
-        7 - UNSUPPORTED_PLUGIN_ID
-    */
-    uint8_t status = 0;
-    double result = std::numeric_limits<double>::quiet_NaN();
+    const auto* vector_data = static_cast<const double*>(request.data());
+    const std::size_t num_elements = request.size() / sizeof(double);
 
-    if (num_elements != plugin->get_dimensions_()) {
-        status |= 1 << 4;
-        std::cerr << "[Server] Error: Received vector with wrong dimensions!" << std::endl;
-    } 
-    else if (!plugin->check_constraints_(vector_data)) {
-        status = 1 << 5;
-        // std::cerr << "[Server] Warning: Vector outside domain!" << std::endl;
-    } 
-    else {
-        result = plugin->evaluate_(vector_data);
-    }
+    const eval::Result result = eval::evaluate(plugin_, vector_data, num_elements);
 
     std::vector<uint8_t> reply_data(sizeof(uint8_t) + sizeof(double));
-    
-    reply_data[0] = status;
-    std::memcpy(&reply_data[1], &result, sizeof(double));
+    reply_data[0] = result.status;
+    std::memcpy(&reply_data[1], &result.value, sizeof(double));
 
-    if (!evalID.empty()) {
-        global_logger.log_evaluation(evalID, pluginId_, result);
+    if (!evalId_.empty()) {
+        global_logger.log_evaluation(evalId_, pluginId_, result.value);
     }
 
     zmq::message_t reply(reply_data.begin(), reply_data.end());

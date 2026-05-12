@@ -1,33 +1,33 @@
 #pragma once
-#include <string>
-#include <dlfcn.h>
-#include <iostream>
-#include "problem.hpp"
-#include "plugin_utils.hpp"
 
+#include <dlfcn.h>
+#include <string>
+
+#include "plugin_utils.hpp"
+#include "problem.hpp"
 
 namespace plugin {
 
 class Plugin {
 public:
-    explicit Plugin(const std::string &pluginId) : 
-        pluginHandle(plugin::loadPlugin(pluginId)),
-        problem(pluginHandle) {}
+    explicit Plugin(const std::string& pluginId)
+        : pluginHandle_(plugin::loadPlugin(pluginId)),
+          problem_(pluginHandle_) {}
+
     ~Plugin() {
-        if (pluginHandle) {
-            dlclose(pluginHandle);
+        if (pluginHandle_) {
+            ::dlclose(pluginHandle_);
         }
     }
+
     Plugin(const Plugin&) = delete;
     Plugin& operator=(const Plugin&) = delete;
-    const Problem* operator->() const {
-        return &problem;
-    }
 
+    const Problem* operator->() const { return &problem_; }
 
 private:
-    void* pluginHandle;
-    const Problem problem;
+    void* pluginHandle_;
+    Problem problem_;
 };
 
 }

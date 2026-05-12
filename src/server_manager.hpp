@@ -1,13 +1,9 @@
-
 #pragma once
 
-#include <vector>
 #include <string>
 #include <thread>
-#include <iostream>
+#include <vector>
 #include <zmq.hpp>
-#include "server.hpp"
-
 
 class ServerManager {
 public:
@@ -22,21 +18,30 @@ public:
     void run();
 
 private:
-    const int port_ = 5000;
+    ServerManager()
+        : zmq_context_(1),
+          zmq_socket_(zmq_context_, zmq::socket_type::rep) {}
+
+    ~ServerManager() {
+        for (auto& t : threads_) {
+            if (t.joinable()) t.join();
+        }
+    }
+
+    struct Request {
+        std::string head;
+        std::string evalId;
+        std::string pluginId;
+    };
+
+    Request receiveRequest();
+    void sendReply(const std::string& payload);
+    void handleBenchmark(const std::string& pluginId, const std::string& evalId);
+    void handlePlot(const std::string& evalId, const std::string& pluginId);
+
+    static constexpr int kPort = 5000;
 
     zmq::context_t zmq_context_;
     zmq::socket_t zmq_socket_;
     std::vector<std::thread> threads_;
-
-    ServerManager() : zmq_context_(1), zmq_socket_(zmq_context_, zmq::socket_type::rep) {}
-
-    ~ServerManager() {
-        for (auto& t : threads_) {
-            if (t.joinable()) {
-                t.join();
-            }
-        }
-    }
-
-    void handleRequest(const std::string& problemId, const std::string& evalID);
 };
