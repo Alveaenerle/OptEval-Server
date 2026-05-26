@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package optEval;
+
+// Black-box evaluator service. One Evaluate() call == one session.
+// Session identifiers (eval-id, plugin-id) are sent as gRPC client metadata
+// at stream init so the wire payloads carry only the data being evaluated.
+service Evaluator {
+    rpc Evaluate(stream EvalVector) returns (stream EvalResult);
+}
+
+message EvalVector {
+    repeated double values = 1;
+}
+
+message EvalResult {
+    // Bitmask of eval::StatusFlag in src/evaluator/evaluator.hpp.
+    uint32 status = 1;
+    double value = 2;
+}

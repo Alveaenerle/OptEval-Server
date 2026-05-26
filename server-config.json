@@ -1,0 +1,12 @@
+{
+    "role": "evaluator",
+
+    "evaluator": {
+        "listen": "0.0.0.0",
+        "port": 50051,
+        "max_concurrent_sessions": 16,
+        "plugins_dir": "plugins",
+        "archivist_addr": "localhost:50052"
+    }
+
+}

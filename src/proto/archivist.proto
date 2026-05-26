@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package optEval;
+
+// Historical-data service. Evaluator streams log entries into LogEvaluations;
+// external clients fetch traces via GetPlotData.
+service Archivist {
+    // Session ids (eval-id, plugin-id) travel in client metadata.
+    rpc LogEvaluations(stream LogValue) returns (LogAck);
+    rpc GetPlotData(PlotRequest) returns (PlotData);
+}
+
+message LogValue {
+    double value = 1;
+}
+
+message LogAck {
+    uint64 count = 1;
+}
+
+// Per-plugin selection: which plugin to fetch, and which panels.
+message PlotSpec {
+    string plugin_id = 1;
+    bool include_convergence = 2;
+    bool include_ecdf = 3;
+}
+
+message PlotRequest {
+    string eval_id = 1;
+    // Empty => return every plugin in the session with BOTH panels.
+    // Otherwise, only the listed plugins are returned, each constrained
+    // to the flags in its PlotSpec.
+    repeated PlotSpec plugins = 2;
+}
+
+// Compressed window-mean point on the best-so-far convergence trajectory.
+// Time-series only; never derived from the same data as EcdfPoint.
+message ConvergencePoint {
+    int32 x = 1;     // evaluation index at the end of the window
+    double mean = 2; // mean of best-so-far within that window
+}
+
+// Single percentile sample on the value-distribution ECDF.
+// Distribution-only; never derived from the same data as ConvergencePoint.
+message EcdfPoint {
+    double percentile = 1;  // in [0, 1]
+    double value = 2;
+}
+
+message PluginPlot {
+    repeated ConvergencePoint convergence = 1;
+    repeated EcdfPoint ecdf = 2;
+}
+
+message PlotData {
+    map<string, PluginPlot> plugins = 1;
+}
