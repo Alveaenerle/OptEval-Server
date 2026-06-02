@@ -1,12 +1,18 @@
 {
-    "role": "evaluator",
+    "role": "both",
 
     "evaluator": {
-        "listen": "0.0.0.0",
-        "port": 50051,
+        "transport": "shm",
+        "shm_id": "opteval_evaluator",
         "max_concurrent_sessions": 16,
         "plugins_dir": "plugins",
         "archivist_addr": "localhost:50052"
+    },
+
+    "archivist": {
+        "listen": "0.0.0.0",
+        "port": 50052,
+        "data_dir": "results"
     }
 
 }

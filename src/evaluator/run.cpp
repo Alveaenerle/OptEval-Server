@@ -11,6 +11,7 @@
 #include "evaluator/evaluation_logger.hpp"
 #include "evaluator/evaluator_service.hpp"
 #include "evaluator/plugin_registry.hpp"
+#include "evaluator/shm_evaluator.hpp"
 #include "lifecycle.hpp"
 
 namespace evaluator {
@@ -36,6 +37,10 @@ int run(const optEvalCfg::EvaluatorConfig& cfg) {
         std::cout << "[Evaluator] Logging to archivist at " << cfg.archivist_addr << std::endl;
         logger = std::make_unique<ArchivistLogger>(
             grpc::CreateChannel(cfg.archivist_addr, grpc::InsecureChannelCredentials()));
+    }
+
+    if (cfg.transport == optEvalCfg::Transport::Shm) {
+        return shm::runServer(cfg, *logger);
     }
 
     EvaluatorServiceImpl service(*logger);

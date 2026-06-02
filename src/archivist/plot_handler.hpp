@@ -27,17 +27,22 @@ struct PluginPlot {
 struct PlotOptions {
     bool include_convergence = true;
     bool include_ecdf = true;
+    // Curve resolution for convergence binning.
+    int convergence_windows = 200;
+    // Explicit ECDF sample points; empty => the built-in tail-dense set.
+    std::vector<double> ecdf_percentiles;
 };
 
-// Reads .dat files under <data_dir>/<eval_id>/ and produces a compressed
-// representation per plugin. If plugin_id is non-empty, only that plugin
-// is considered; otherwise all .dat files in the session directory are.
+// Reads the per-plugin run files under <data_dir>/<eval_id>/<plugin_id>/run_*.dat
+// (legacy flat <plugin_id>.dat is also accepted) and produces a compressed
+// representation per plugin. If plugin_id is non-empty, only that plugin is
+// considered; otherwise every plugin directory in the session is.
 //
-// Convergence and ECDF are computed from disjoint data shapes by design:
-//   - convergence: window-mean over the best-so-far trajectory, adjacent
-//     duplicate-mean windows folded.
-//   - ecdf:        fixed-percentile samples over the raw value distribution.
-// They are never derived from each other.
+// Across the independent runs of a plugin:
+//   - convergence: per-run best-so-far is binned, then averaged window-by-window.
+//   - ecdf:        all runs' raw values are pooled into one distribution.
+// Convergence and ECDF are computed from disjoint data shapes by design and are
+// never derived from each other.
 std::map<std::string, PluginPlot> buildPlots(const std::string& eval_id,
                                              const std::string& plugin_id,
                                              const PlotOptions& opts,

@@ -15,4 +15,8 @@ void install_signal_handlers();
 // after server->Wait() returns.
 void register_server(std::shared_ptr<grpc::Server> server);
 
+// True once SIGINT/SIGTERM has fired. Non-gRPC servers (e.g. SHM) poll this
+// to know when to break out of their accept loops.
+bool is_shutting_down();
+
 }

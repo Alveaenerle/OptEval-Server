@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+#include <cstdint>
 #include <filesystem>
 
 #include <grpcpp/grpcpp.h>
@@ -14,6 +16,10 @@ public:
     ArchivistServiceImpl(SessionLogger& logger, std::filesystem::path data_dir)
         : logger_(logger), data_dir_(std::move(data_dir)) {}
 
+    grpc::Status CreateSession(grpc::ServerContext* ctx,
+                               const optEval::CreateSessionRequest* request,
+                               optEval::SessionId* response) override;
+
     grpc::Status LogEvaluations(grpc::ServerContext* ctx,
                                 grpc::ServerReader<optEval::LogValue>* reader,
                                 optEval::LogAck* ack) override;
@@ -25,6 +31,7 @@ public:
 private:
     SessionLogger& logger_;
     std::filesystem::path data_dir_;
+    std::atomic<uint64_t> session_counter_{0};
 };
 
 }

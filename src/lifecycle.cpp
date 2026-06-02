@@ -35,4 +35,8 @@ void register_server(std::shared_ptr<grpc::Server> server) {
     g_servers.push_back(std::move(server));
 }
 
+bool is_shutting_down() {
+    return g_shutting_down.load(std::memory_order_acquire);
+}
+
 }

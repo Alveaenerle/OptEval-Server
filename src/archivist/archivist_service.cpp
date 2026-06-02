@@ -1,6 +1,10 @@
 #include "archivist/archivist_service.hpp"
 
+#include <chrono>
+#include <ctime>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 #include "archivist/plot_handler.hpp"
@@ -32,6 +36,41 @@ void emit(optEval::PlotData* response,
     }
 }
 
+PlotOptions optionsFor(const optEval::PlotSpec& spec) {
+    PlotOptions opts;
+    opts.include_convergence = spec.include_convergence();
+    opts.include_ecdf        = spec.include_ecdf();
+    if (spec.convergence_windows() > 0) {
+        opts.convergence_windows = spec.convergence_windows();
+    }
+    opts.ecdf_percentiles.assign(spec.ecdf_percentiles().begin(),
+                                 spec.ecdf_percentiles().end());
+    return opts;
+}
+
+}
+
+grpc::Status ArchivistServiceImpl::CreateSession(
+    grpc::ServerContext*,
+    const optEval::CreateSessionRequest* request,
+    optEval::SessionId* response) {
+
+    std::string prefix = request->prefix();
+    if (prefix.empty()) prefix = "eval";
+
+    const auto now = std::chrono::system_clock::now();
+    const std::time_t t = std::chrono::system_clock::to_time_t(now);
+    std::tm tm{};
+    localtime_r(&t, &tm);
+
+    const uint64_t n = session_counter_.fetch_add(1, std::memory_order_relaxed);
+
+    std::ostringstream oss;
+    oss << prefix << '-' << std::put_time(&tm, "%Y%m%d-%H%M%S") << '-' << n;
+
+    response->set_eval_id(oss.str());
+    std::cout << "[Archivist] created session " << oss.str() << std::endl;
+    return grpc::Status::OK;
 }
 
 grpc::Status ArchivistServiceImpl::LogEvaluations(
@@ -46,17 +85,19 @@ grpc::Status ArchivistServiceImpl::LogEvaluations(
                             "missing 'eval-id' or 'plugin-id' metadata");
     }
 
-    logger_.initialize_session(eval_id);
+    // One LogEvaluations stream == one independent run of this plugin. The
+    // run's output file stays open for the whole stream (no per-value reopen).
+    RunHandle handle = logger_.begin_run(eval_id, plugin_id);
 
     uint64_t count = 0;
     optEval::LogValue v;
     while (reader->Read(&v)) {
-        logger_.log_evaluation(eval_id, plugin_id, v.value());
+        handle.out << v.value() << "\n";
         ++count;
     }
     ack->set_count(count);
     std::cout << "[Archivist] logged " << count << " values for "
-              << eval_id << "/" << plugin_id << std::endl;
+              << eval_id << "/" << plugin_id << " run_" << handle.run << std::endl;
     return grpc::Status::OK;
 }
 
@@ -65,20 +106,18 @@ grpc::Status ArchivistServiceImpl::GetPlotData(
     const optEval::PlotRequest* request,
     optEval::PlotData* response) {
 
-    // Empty selection => every plugin in the session, both panels.
+    // Empty selection => every plugin in the session, both panels, defaults.
     if (request->plugins_size() == 0) {
-        PlotOptions opts;  // defaults: both true
+        PlotOptions opts;  // defaults: both true, default windows/percentiles
         const auto all = buildPlots(request->eval_id(), "", opts, data_dir_);
         for (const auto& [name, pp] : all) emit(response, name, pp);
         return grpc::Status::OK;
     }
 
-    // Per-plugin selection: each PlotSpec defines its own panel flags.
+    // Per-plugin selection: each PlotSpec carries its own panel flags + knobs.
     for (const auto& spec : request->plugins()) {
         if (!spec.include_convergence() && !spec.include_ecdf()) continue;
-        PlotOptions opts;
-        opts.include_convergence = spec.include_convergence();
-        opts.include_ecdf        = spec.include_ecdf();
+        const PlotOptions opts = optionsFor(spec);
         const auto one = buildPlots(request->eval_id(), spec.plugin_id(),
                                     opts, data_dir_);
         for (const auto& [name, pp] : one) emit(response, name, pp);

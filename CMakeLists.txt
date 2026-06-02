@@ -85,6 +85,7 @@ add_executable(opt_eval_server
     src/lifecycle.cpp
     src/evaluator/run.cpp
     src/evaluator/evaluator_service.cpp
+    src/evaluator/shm_evaluator.cpp
     src/evaluator/archivist_logger.cpp
     src/evaluator/plugin_utils.cpp
     src/evaluator/plugin_registry.cpp

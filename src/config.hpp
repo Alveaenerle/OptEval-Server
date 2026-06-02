@@ -6,10 +6,17 @@
 namespace optEvalCfg {
 
 enum class Role { Evaluator, Archivist, Both };
+enum class Transport { Grpc, Shm };
 
 struct EvaluatorConfig {
+    // Which wire to expose. "grpc" => gRPC bidi-stream on listen:port.
+    // "shm"  => POSIX shared memory under /dev/shm, identified by `shm_id`.
+    Transport transport = Transport::Grpc;
     std::string listen = "0.0.0.0";
     int port = 50051;
+    // Identifier used to derive /dev/shm names when transport == Shm.
+    // Connect region: /dev/shm/<shm_id>_connect.
+    std::string shm_id = "opteval_evaluator";
     // Hard cap on concurrent Evaluate() sessions. Each bidi-stream session
     // consumes one gRPC sync-server handler thread for its lifetime.
     int max_concurrent_sessions = 16;
@@ -38,5 +45,6 @@ struct Config {
 Config loadConfig(const std::filesystem::path& path);
 
 const char* roleToString(Role r);
+const char* transportToString(Transport t);
 
 }

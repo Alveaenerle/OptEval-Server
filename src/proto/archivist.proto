@@ -5,9 +5,22 @@ package optEval;
 // Historical-data service. Evaluator streams log entries into LogEvaluations;
 // external clients fetch traces via GetPlotData.
 service Archivist {
+    // Mint a fresh, unique eval-id. The Archivist owns id generation so
+    // independent client runs never collide; the id is handed back to the
+    // caller and then used as session metadata on every Evaluate stream.
+    rpc CreateSession(CreateSessionRequest) returns (SessionId);
     // Session ids (eval-id, plugin-id) travel in client metadata.
     rpc LogEvaluations(stream LogValue) returns (LogAck);
     rpc GetPlotData(PlotRequest) returns (PlotData);
+}
+
+message CreateSessionRequest {
+    // Optional human-readable prefix; empty => "eval".
+    string prefix = 1;
+}
+
+message SessionId {
+    string eval_id = 1;
 }
 
 message LogValue {
@@ -18,11 +31,27 @@ message LogAck {
     uint64 count = 1;
 }
 
-// Per-plugin selection: which plugin to fetch, and which panels.
+// Per-plugin plot selection plus the rendering knobs carried by the client's
+// ConvergencePlot / ECDFPlot objects. Fields default to server behaviour when
+// left at their proto3 zero value (0 windows => 200; empty percentiles =>
+// the built-in tail-dense set).
 message PlotSpec {
     string plugin_id = 1;
     bool include_convergence = 2;
     bool include_ecdf = 3;
+
+    // ConvergencePlot knobs.
+    int32 convergence_windows = 4;     // curve resolution; 0 => server default
+    bool convergence_log_scale = 5;    // render hint (y-axis log)
+    string convergence_label = 6;      // legend label override
+
+    // ECDFPlot knobs.
+    repeated double ecdf_percentiles = 7;  // explicit sample points; empty => default
+    bool ecdf_log_scale = 8;               // render hint (value-axis log)
+    string ecdf_label = 9;                 // legend label override
+    bool ecdf_value_range = 10;            // whether value_min/value_max apply
+    double ecdf_value_min = 11;            // value-axis lower bound
+    double ecdf_value_max = 12;            // value-axis upper bound
 }
 
 message PlotRequest {
